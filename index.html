@@ -1,43 +1,54 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Stockfish Example</title>
-    <!-- Включаем библиотеку Stockfish -->
-    <script src="stockfish.asm.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор позиций - Мат одинокому королю</title>
+    
+    <!-- Подключаем jQuery (требуется для Chessboard.js) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Подключаем Chess.js (старая версия без ES модулей) -->
+    <script src="https://cdn.jsdelivr.net/npm/chess.js@0.12.1/chess.min.js"></script>
+    <!-- Подключаем Chessboard.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <!-- Стили для доски -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <!-- Стили приложения -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h1>Простой пример использования Stockfish.asm.js</h1>
-<div id="output"></div>
-<script>
-// Функция инициализирует движок и запрашивает ход
-async function makeMove() {
-    const stockfish = new Worker("stockfish.js");
+    <h1>Генератор позиций - Мат одинокому королю</h1>
     
-    // Устанавливаем позицию
-    await sendCommand(stockfish, `position startpos`);
+    <div class="container">
+        <div class="controls">
+            <div class="position-type">
+                <label for="positionType">Тип позиции:</label>
+                <select id="positionType">
+                    <option value="0">1. Ферзь + король</option>
+                    <option value="1">2. Две ладьи + король</option>
+                    <option value="2">3. Одна ладья + король</option>
+                    <option value="3">4. Два слона + король</option>
+                    <option value="4">5. Слон + конь + король</option>
+                </select>
+            </div>
+            
+            <button class="button" id="generateBtn">Генерировать позицию</button>
+            
+            <div class="info" id="info">
+                Выберите тип позиции и нажмите кнопку для генерации.
+            </div>
+        </div>
+        
+        <div class="board-container">
+            <div id="board"></div>
+        </div>
+    </div>
     
-    // Запрашиваем оценку лучшего хода
-    await sendCommand(stockfish, `go depth 5`);
+    <div class="version" id="version">Загрузка версии...</div>
     
-    let bestMove = '';
-    stockfish.onmessage = e => {
-        if(e.data.includes('bestmove')) {
-            bestMove = e.data.split(' ')[1];
-            document.getElementById('output').innerText += `Лучший ход: ${bestMove}\n`;
-        }
-    };
-}
-
-// Отправляет команды движку
-function sendCommand(worker, command) {
-    return new Promise(resolve => {
-        worker.postMessage(command);
-        resolve();
-    });
-}
-
-makeMove(); // Выполняем функцию сразу после загрузки страницы
-</script>
+    <!-- Подключаем скрипты -->
+    <script src="snippets/position-generator.js"></script>
+    <script src="snippets/version.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,21 @@
+{
+  "name": "visualchess",
+  "version": "1.0.0",
+  "description": "Обучающая программа для игры в шахматы на базе шахматной литературы",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "chess",
+    "training",
+    "endgame"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+

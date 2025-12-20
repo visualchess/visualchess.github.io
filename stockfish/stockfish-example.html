@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stockfish Example</title>
+    <!-- Включаем библиотеку Stockfish -->
+    <script src="stockfish.wasm"></script>
+</head>
+<body>
+<h1>Простой пример использования Stockfish.js</h1>
+<div id="output"></div>
+<script>
+// Функция инициализирует движок и запрашивает ход
+async function makeMove() {
+    const stockfish = new Worker("stockfish.js");
+    
+    // Устанавливаем позицию
+    await sendCommand(stockfish, `position startpos`);
+    
+    // Запрашиваем оценку лучшего хода
+    await sendCommand(stockfish, `go depth 5`);
+    
+    let bestMove = '';
+    stockfish.onmessage = e => {
+        if(e.data.includes('bestmove')) {
+            bestMove = e.data.split(' ')[1];
+            document.getElementById('output').innerText += `Лучший ход: ${bestMove}\n`;
+        }
+    };
+}
+
+// Отправляет команды движку
+function sendCommand(worker, command) {
+    return new Promise(resolve => {
+        worker.postMessage(command);
+        resolve();
+    });
+}
+
+makeMove(); // Выполняем функцию сразу после загрузки страницы
+</script>
+</body>
+</html>
