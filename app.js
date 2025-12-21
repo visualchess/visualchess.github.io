@@ -55,8 +55,26 @@ function generatePosition() {
     const infoDiv = document.getElementById('info');
     
     try {
+        // Включаем режим отладки (можно включить в консоли: window.DEBUG_CHESS_GENERATOR = true)
+        const debugMode = window.DEBUG_CHESS_GENERATOR || false;
+        
         const fen = generateCheckmatePosition(type);
         chess = new Chess(fen);
+        
+        // Проверяем, нет ли шаха в сгенерированной позиции (для отладки)
+        if (debugMode) {
+            chess.turn('b');
+            const blackCheck = chess.in_check();
+            chess.turn('w');
+            const whiteCheck = chess.in_check();
+            console.log('Generated position check status:', {
+                fen: fen,
+                blackInCheck: blackCheck,
+                whiteInCheck: whiteCheck,
+                turn: chess.turn()
+            });
+        }
+        
         // Очищаем доску перед установкой новой позиции
         board.position('empty');
         // Устанавливаем новую позицию
