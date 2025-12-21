@@ -10,8 +10,11 @@ async function getVersion() {
         const response = await fetch('version.txt');
         if (response.ok) {
             const text = await response.text();
-            const lines = text.trim().split('\n');
-            return lines[0] || 'unknown';
+            // Очищаем текст от всех невидимых символов и берём первую строку
+            const cleaned = text.trim().replace(/[\r\n]+/g, '\n').split('\n')[0];
+            // Убираем все не-ASCII символы, оставляем только буквы, цифры и дефисы
+            const version = cleaned.replace(/[^\w-]/g, '').trim();
+            return version || 'unknown';
         }
     } catch (error) {
         // Игнорируем ошибки CORS при локальном открытии
