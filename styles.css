@@ -100,3 +100,12 @@ h1 {
     font-size: 14px;
 }
 
+#mateInfo {
+    background-color: #e3f2fd;
+}
+
+#penaltyInfo {
+    background-color: #ffebee;
+    color: #c62828;
+}
+

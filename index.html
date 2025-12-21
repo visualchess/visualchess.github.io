@@ -37,6 +37,21 @@
             <div class="info" id="info">
                 Выберите тип позиции и нажмите кнопку для генерации.
             </div>
+            
+            <div class="info" id="mateInfo" style="display: none; margin-top: 15px;">
+                <strong>Мат в:</strong> <span id="mateIn">-</span> ходов
+            </div>
+            
+            <div class="info" id="penaltyInfo" style="display: none; margin-top: 15px; background-color: #ffebee;">
+                <strong>Штрафные очки:</strong> <span id="penaltyCount">0</span>
+            </div>
+            
+            <div class="info" id="gameStatus" style="margin-top: 15px; background-color: #fff3e0;">
+                <strong>Статус:</strong> <span id="statusText">Игра продолжается</span><br>
+                <strong>Ход:</strong> <span id="turnText">Белые</span><br>
+                <strong>Ходов белых:</strong> <span id="whiteMovesCount">0</span><br>
+                <strong>Ходов чёрных:</strong> <span id="blackMovesCount">0</span>
+            </div>
         </div>
         
         <div class="board-container">
@@ -49,6 +64,13 @@
     <!-- Подключаем скрипты -->
     <script src="snippets/position-generator.js"></script>
     <script src="snippets/version.js"></script>
+    <!-- Модули приложения -->
+    <script src="snippets/game-state.js"></script>
+    <script src="snippets/stockfish-api.js"></script>
+    <script src="snippets/board-handlers.js"></script>
+    <script src="snippets/ui-updates.js"></script>
+    <script src="snippets/game-logic.js"></script>
+    <!-- Главный файл -->
     <script src="app.js"></script>
 </body>
 </html>
