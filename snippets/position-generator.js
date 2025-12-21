@@ -26,83 +26,108 @@ function uniquesquare(busysquare, requiredColor = null) {
  *   - 'same': Both bishops are placed on squares of the same color.
  *   - 'opposite': Bishops are placed on squares of opposite colors.
  *   For other bishop configurations (e.g., multiple bishops of the same color), bishops are placed on the same color squares.
+ * @param {number} [maxAttempts=100] - Maximum recursion attempts to avoid infinite loops.
+ * @returns {string} FEN position without check on either king.
  */
-function generateEndgamePosition(pieces, bishopPairType = 'random') {
+function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts = 100) {
     const chess = new Chess();
     chess.clear(); // Очищаем доску перед размещением фигур
     let busysquare = []; // массив занятых клеток
+    let attempts = 0;
 
-    // Проверяем, есть ли пара слонов (один белый 'B' и один чёрный 'b')
-    const whiteBishopCount = (pieces.match(/B/g) || []).length;
-    const blackBishopCount = (pieces.match(/b/g) || []).length;
-    const isBishopPair = whiteBishopCount === 1 && blackBishopCount === 1;
+    // Рекурсивная функция с лимитом попыток
+    function generate() {
+        if (attempts >= maxAttempts) {
+            console.warn('Max attempts reached; returning current position anyway.');
+            return chess.fen();
+        }
+        attempts++;
 
-    // Счётчик для пары слонов
-    let bishopCount = 0;
-    let firstBishopColor = null;
+        busysquare = []; // Сброс занятых для новой попытки
+        chess.clear();
 
-    // Размещаем белого короля
-    chess.put({ type: 'k', color: 'w' }, uniquesquare(busysquare));
+        // Проверяем, есть ли пара слонов (один белый 'B' и один чёрный 'b')
+        const whiteBishopCount = (pieces.match(/B/g) || []).length;
+        const blackBishopCount = (pieces.match(/b/g) || []).length;
+        const isBishopPair = whiteBishopCount === 1 && blackBishopCount === 1;
 
-    // Размещаем чёрного короля
-    chess.put({ type: 'k', color: 'b' }, uniquesquare(busysquare));
+        // Счётчик для пары слонов
+        let bishopCount = 0;
+        let firstBishopColor = null;
 
-    // Переменные для отслеживания цвета первого слона каждого цвета (для правильного размещения)
-    let whiteFirstBishopColor = null;
-    let blackFirstBishopColor = null;
+        // Размещаем белого короля
+        chess.put({ type: 'k', color: 'w' }, uniquesquare(busysquare));
 
-    // Проходим по строке pieces
-    for (const pieceChar of pieces) {
-        const isWhite = pieceChar === pieceChar.toUpperCase();
-        const color = isWhite ? 'w' : 'b';
-        let pieceType = pieceChar.toLowerCase(); // примечание: для шахмат используется Chess.js
-        let requiredColor = null;
-        
-        // Обработка цвета клетки для слонов
-        if (pieceChar.toUpperCase() === 'B') {
-            bishopCount++; // увеличиваем счётчик слонов
-            // Логика для пары слонов
-            if (isBishopPair && bishopPairType !== 'random') {
-                // Обработка логики для пары слонов
-                if (bishopCount === 1) {
-                    // Первый слон в паре: выбираем цвет
-                    requiredColor = Math.random() < 0.5 ? 'light' : 'dark';
-                    firstBishopColor = requiredColor;
-                } else if (bishopCount === 2) {
-                    // Второй слон в паре: в зависимости от bishopPairType
-                    requiredColor = bishopPairType === 'same' ? firstBishopColor : (firstBishopColor === 'light' ? 'dark' : 'light');
-                }
-            } else {
-                // Обычная логика для слонов (автоматически чередуем цвета клеток)
-                if (isWhite) {
-                    if (whiteFirstBishopColor) {
-                        requiredColor = whiteFirstBishopColor === 'light' ? 'dark' : 'light';
-                    } else {
+        // Размещаем чёрного короля
+        chess.put({ type: 'k', color: 'b' }, uniquesquare(busysquare));
+
+        // Переменные для отслеживания цвета первого слона каждого цвета (для правильного размещения)
+        let whiteFirstBishopColor = null;
+        let blackFirstBishopColor = null;
+
+        // Проходим по строке pieces
+        for (const pieceChar of pieces) {
+            const isWhite = pieceChar === pieceChar.toUpperCase();
+            const color = isWhite ? 'w' : 'b';
+            let pieceType = pieceChar.toLowerCase(); // примечание: для шахмат используется Chess.js
+            let requiredColor = null;
+            
+            // Обработка цвета клетки для слонов
+            if (pieceChar.toUpperCase() === 'B') {
+                bishopCount++; // увеличиваем счётчик слонов
+                // Логика для пары слонов
+                if (isBishopPair && bishopPairType !== 'random') {
+                    // Обработка логики для пары слонов
+                    if (bishopCount === 1) {
+                        // Первый слон в паре: выбираем цвет
                         requiredColor = Math.random() < 0.5 ? 'light' : 'dark';
-                        whiteFirstBishopColor = requiredColor;
+                        firstBishopColor = requiredColor;
+                    } else if (bishopCount === 2) {
+                        // Второй слон в паре: в зависимости от bishopPairType
+                        requiredColor = bishopPairType === 'same' ? firstBishopColor : (firstBishopColor === 'light' ? 'dark' : 'light');
                     }
                 } else {
-                    if (blackFirstBishopColor) {
-                        requiredColor = blackFirstBishopColor === 'light' ? 'dark' : 'light';
+                    // Обычная логика для слонов (автоматически чередуем цвета клеток)
+                    if (isWhite) {
+                        if (whiteFirstBishopColor) {
+                            requiredColor = whiteFirstBishopColor === 'light' ? 'dark' : 'light';
+                        } else {
+                            requiredColor = Math.random() < 0.5 ? 'light' : 'dark';
+                            whiteFirstBishopColor = requiredColor;
+                        }
                     } else {
-                        requiredColor = Math.random() < 0.5 ? 'light' : 'dark';
-                        blackFirstBishopColor = requiredColor;
+                        if (blackFirstBishopColor) {
+                            requiredColor = blackFirstBishopColor === 'light' ? 'dark' : 'light';
+                        } else {
+                            requiredColor = Math.random() < 0.5 ? 'light' : 'dark';
+                            blackFirstBishopColor = requiredColor;
+                        }
                     }
                 }
             }
+            
+            const square = uniquesquare(busysquare, requiredColor);
+            chess.put({ type: pieceType, color: color }, square);
         }
-        
-        const square = uniquesquare(busysquare, requiredColor);
-        chess.put({ type: pieceType, color: color }, square);
+
+        // Проверяем шах чёрному королю (основная проверка)
+        const originalTurn = chess.turn();
+        chess.turn('b');
+        const blackInCheck = chess.in_check();
+        chess.turn(originalTurn); // Возвращаем turn на 'w'
+
+        // Опционально: проверка шаха белому королю (раскомментируйте, если нужно избегать обоим)
+        const whiteInCheck = chess.in_check(); // Уже на 'w' turn
+
+        if (blackInCheck || whiteInCheck) {
+            // Если чёрный (или белый) под шахом, регенерируем
+            return generate();
+        }
+
+        return chess.fen();
     }
 
-    // Проверяем, не находится ли чёрный король под шахом; если нет, возвращаем
-    if (chess.in_check()) {
-        return generateEndgamePosition(pieces, bishopPairType);
-    }
-
-    // Возвращаем FEN позицию
-    return chess.fen();
+    return generate();
 }
 
 /**
@@ -131,4 +156,3 @@ function generateCheckmatePosition(type) {
     
     return generateEndgamePosition(pieces);
 }
-
