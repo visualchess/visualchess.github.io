@@ -1,6 +1,3 @@
-// Импорт Chess.js (если не глобальный)
-const Chess = require('chess.js'); // Или import, в зависимости от среды
-
 // Функция для определения цвета клетки ('light' или 'dark')
 function getSquareColor(square) {
     const file = square[0];
@@ -24,23 +21,29 @@ function uniquesquare(busysquare, requiredColor = null) {
 /**
  * Generates an endgame chess position based on the given pieces string.
  * @param {string} pieces - A string of piece symbols (e.g., 'Q' for white queen, 'b' for black bishop).
- * @param {string} bishopPairType - Determines how bishop colors are assigned for bishop pairs.
- * @param {number} [maxAttempts=100] - Maximum recursion attempts.
- * @returns {Promise<string>} FEN position without check on either king.
+ * @param {string} bishopPairType - Determines how bishop colors are assigned for bishop pairs (one white 'B' and one black 'b' bishop).
+ *   - 'random': Colors are chosen randomly (default).
+ *   - 'same': Both bishops are placed on squares of the same color.
+ *   - 'opposite': Bishops are placed on squares of opposite colors.
+ *   For other bishop configurations (e.g., multiple bishops of the same color), bishops are placed on the same color squares.
+ * @param {number} [maxAttempts=100] - Maximum recursion attempts to avoid infinite loops.
+ * @returns {string} FEN position without check on either king.
  */
-async function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts = 100) {
+function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts = 100) {
     const chess = new Chess();
+    chess.clear(); // Очищаем доску перед размещением фигур
     let busysquare = []; // массив занятых клеток
     let attempts = 0;
 
-    // Теперь async рекурсивная функция
-    async function generate(currentAttempts = 0) {
-        if (currentAttempts >= maxAttempts) {
-            console.warn('Max attempts reached; returning fallback position.');
-            return 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1'; // Простая валидная позиция как fallback
+    // Рекурсивная функция с лимитом попыток
+    function generate() {
+        if (attempts >= maxAttempts) {
+            console.warn('Max attempts reached; returning current position anyway.');
+            return chess.fen();
         }
+        attempts++;
 
-        busysquare = []; // Сброс для новой попытки
+        busysquare = []; // Сброс занятых для новой попытки
         chess.clear();
 
         // Проверяем, есть ли пара слонов (один белый 'B' и один чёрный 'b')
@@ -58,7 +61,7 @@ async function generateEndgamePosition(pieces, bishopPairType = 'random', maxAtt
         // Размещаем чёрного короля
         chess.put({ type: 'k', color: 'b' }, uniquesquare(busysquare));
 
-        // Переменные для отслеживания цвета первого слона каждого цвета
+        // Переменные для отслеживания цвета первого слона каждого цвета (для правильного размещения)
         let whiteFirstBishopColor = null;
         let blackFirstBishopColor = null;
 
@@ -66,20 +69,25 @@ async function generateEndgamePosition(pieces, bishopPairType = 'random', maxAtt
         for (const pieceChar of pieces) {
             const isWhite = pieceChar === pieceChar.toUpperCase();
             const color = isWhite ? 'w' : 'b';
-            let pieceType = pieceChar.toLowerCase();
+            let pieceType = pieceChar.toLowerCase(); // примечание: для шахмат используется Chess.js
             let requiredColor = null;
             
             // Обработка цвета клетки для слонов
             if (pieceChar.toUpperCase() === 'B') {
-                bishopCount++;
+                bishopCount++; // увеличиваем счётчик слонов
+                // Логика для пары слонов
                 if (isBishopPair && bishopPairType !== 'random') {
+                    // Обработка логики для пары слонов
                     if (bishopCount === 1) {
+                        // Первый слон в паре: выбираем цвет
                         requiredColor = Math.random() < 0.5 ? 'light' : 'dark';
                         firstBishopColor = requiredColor;
                     } else if (bishopCount === 2) {
+                        // Второй слон в паре: в зависимости от bishopPairType
                         requiredColor = bishopPairType === 'same' ? firstBishopColor : (firstBishopColor === 'light' ? 'dark' : 'light');
                     }
                 } else {
+                    // Обычная логика для слонов (автоматически чередуем цвета клеток)
                     if (isWhite) {
                         if (whiteFirstBishopColor) {
                             requiredColor = whiteFirstBishopColor === 'light' ? 'dark' : 'light';
@@ -102,38 +110,95 @@ async function generateEndgamePosition(pieces, bishopPairType = 'random', maxAtt
             chess.put({ type: pieceType, color: color }, square);
         }
 
+        // Проверяем шах и мат для обоих королей
+        // Создаём новый объект Chess из FEN для надёжной проверки
         const fen = chess.fen();
+        const testChess = new Chess(fen);
         
-        // Валидация через Stockfish (с обработкой ошибок)
-        try {
-            const bestMove = await getBestMove(fen, 1);
-            if (!bestMove) {
-                console.warn(`Attempt ${currentAttempts + 1}: Position invalid (mate/stalemate or error):`, fen);
-                return generate(currentAttempts + 1); // Локальная рекурсия с инкрементом
+        // Находим позиции королей для дополнительной проверки
+        let blackKingSquare = null;
+        let whiteKingSquare = null;
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const square = String.fromCharCode(97 + j) + (8 - i);
+                const piece = testChess.get(square);
+                if (piece && piece.type === 'k') {
+                    if (piece.color === 'b') blackKingSquare = square;
+                    if (piece.color === 'w') whiteKingSquare = square;
+                }
             }
-            return fen;
-        } catch (error) {
-            console.error('Stockfish error:', error);
-            // Fallback: если Stockfish сломан, используем базовую валидацию FEN
-            const validation = chess.validate_fen(fen);
-            if (!validation.valid) {
-                console.warn('Invalid FEN (fallback):', validation.error);
-                return generate(currentAttempts + 1);
-            }
-            console.warn('Using FEN without Stockfish validation due to error');
-            return fen;
         }
+        
+        // Проверяем шах чёрному королю
+        testChess.turn('b');
+        const blackInCheck = testChess.in_check();
+        const blackMoves = testChess.moves();
+        const blackInCheckmate = blackInCheck && blackMoves.length === 0;
+        
+        // Проверяем шах белому королю
+        testChess.turn('w');
+        const whiteInCheck = testChess.in_check();
+        const whiteMoves = testChess.moves();
+        const whiteInCheckmate = whiteInCheck && whiteMoves.length === 0;
+        
+        // Дополнительная проверка: проверяем, может ли белая фигура атаковать чёрного короля
+        // Для этого временно делаем ход белыми и проверяем все их ходы
+        let blackInCheckByMoves = false;
+        if (blackKingSquare) {
+            testChess.turn('w');
+            const whiteMovesToCheck = testChess.moves({ verbose: true });
+            blackInCheckByMoves = whiteMovesToCheck.some(move => move.to === blackKingSquare);
+        }
+        
+        // Аналогично для белого короля
+        let whiteInCheckByMoves = false;
+        if (whiteKingSquare) {
+            testChess.turn('b');
+            const blackMovesToCheck = testChess.moves({ verbose: true });
+            whiteInCheckByMoves = blackMovesToCheck.some(move => move.to === whiteKingSquare);
+        }
+        
+        // Используем обе проверки
+        const finalBlackInCheck = blackInCheck || blackInCheckByMoves;
+        const finalWhiteInCheck = whiteInCheck || whiteInCheckByMoves;
+
+        if (finalBlackInCheck || finalWhiteInCheck || blackInCheckmate || whiteInCheckmate) {
+            // Если любой король под шахом или матом, регенерируем позицию
+            if (window.DEBUG_CHESS_GENERATOR) {
+                console.log(`Regenerating position:`, {
+                    blackInCheck: blackInCheck,
+                    blackInCheckByMoves: blackInCheckByMoves,
+                    whiteInCheck: whiteInCheck,
+                    whiteInCheckByMoves: whiteInCheckByMoves,
+                    blackInCheckmate: blackInCheckmate,
+                    whiteInCheckmate: whiteInCheckmate,
+                    blackMovesCount: blackMoves.length,
+                    whiteMovesCount: whiteMoves.length,
+                    blackKingSquare: blackKingSquare,
+                    whiteKingSquare: whiteKingSquare,
+                    fen: fen
+                });
+            }
+            return generate();
+        }
+
+        return chess.fen();
     }
 
-    return await generate(attempts); // Запуск с await
+    return generate();
 }
 
 /**
- * Генерирует позицию для мата одинокому королю (теперь async)
- * @param {number} type - Тип позиции (0-4, как раньше).
- * @returns {Promise<string>} FEN позиция
+ * Генерирует позицию для мата одинокому королю
+ * @param {number} type - Тип позиции:
+ *   0: Ферзь + король
+ *   1: Две ладьи + король
+ *   2: Одна ладья + король
+ *   3: Два слона + король
+ *   4: Слон + конь + король
+ * @returns {string} FEN позиция
  */
-async function generateCheckmatePosition(type) {
+function generateCheckmatePosition(type) {
     const piecesMap = {
         0: 'Q',  // Ферзь + король
         1: 'RR', // Две ладьи + король
@@ -147,5 +212,5 @@ async function generateCheckmatePosition(type) {
         throw new Error('Invalid position type');
     }
     
-    return await generateEndgamePosition(pieces); // Await для async
+    return generateEndgamePosition(pieces);
 }
