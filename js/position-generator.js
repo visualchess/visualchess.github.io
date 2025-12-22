@@ -109,19 +109,24 @@ function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts 
             const square = uniquesquare(busysquare, requiredColor);
             chess.put({ type: pieceType, color: color }, square);
         }
-// Проверяем шах королю противника (основная проверка)
-const InCheckPlayer = chess.in_check();
-if (InCheckPlayer) { // Если король под шахом, генерируем позицию повторно
-return generate();
-}
-const originalTurn = chess.turn(); // Чей ход?
-chess.turn(originalTurn === 'w' ? 'b':'w'); // Передаём ход противнику
-const InCheckOther = chess.in_check();
-if (InCheckOther) { // Если другой король под шахом, тоже генерируем позицию повторно
-return generate();
-}
-chess.turn(originalTurn); // Возвращаем ход обратно (игроку)
-        return chess.fen();
+        // Проверяем шах королю противника (основная проверка)
+        // Убираем старые проверки шаха (если хотите протестировать чисто validate_fen)
+        // if (chess.in_check()) return generate();
+        // const originalTurn = chess.turn();
+        // chess.turn(originalTurn === 'w' ? 'b' : 'w');
+        // if (chess.in_check()) return generate();
+        // chess.turn(originalTurn);
+        
+        // Вместо этого — только валидация FEN
+        const fen = chess.fen();
+        const validation = chess.validate_fen(fen);
+        if (!validation.valid) {
+            console.warn('Invalid FEN:', validation.error);
+            return generate(); // Регенерируем
+        }
+        return fen;        
+        
+        //return chess.fen();
     }
     return generate();
 }
