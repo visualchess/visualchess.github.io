@@ -29,7 +29,7 @@ function uniquesquare(busysquare, requiredColor = null) {
  * @param {number} [maxAttempts=100] - Maximum recursion attempts to avoid infinite loops.
  * @returns {string} FEN position without check on either king.
  */
-function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts = 100) {
+async function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts = 100) {
     const chess = new Chess();
     chess.clear(); // Очищаем доску перед размещением фигур
     let busysquare = []; // массив занятых клеток
@@ -118,15 +118,26 @@ function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts 
         // chess.turn(originalTurn);
         
         // Вместо этого — только валидация FEN
-        const fen = chess.fen();
-        const validation = chess.validate_fen(fen);
-        if (!validation.valid) {
-            console.warn('Invalid FEN:', validation.error);
-            return generate(); // Регенерируем
-        }
-        return fen;        
+        //const fen = chess.fen();
+        //const validation = chess.validate_fen(fen);
+        //if (!validation.valid) {
+        //    console.warn('Invalid FEN:', validation.error);
+        //    return generate(); // Регенерируем
+        //}
+        //return fen;        
         
         //return chess.fen();
+        const fen = chess.fen();
+        
+        // Валидация через Stockfish: проверяем, есть ли ход (глубина 1 для скорости)
+        const bestMove = await getBestMove(fen, 1);
+        if (!bestMove) {
+            console.warn('Position invalid (mate/stalemate or error):', fen);
+            // Регенерируем (рекурсивно, но с лимитом попыток)
+            return generateEndgamePosition();
+        }
+        
+        return fen;
     }
     return generate();
 }
