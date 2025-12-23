@@ -110,22 +110,56 @@ function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts 
             chess.put({ type: pieceType, color: color }, square);
         }
 
-        // Простая проверка шаха через chess.js (валидация через Stockfish будет снаружи)
-        // Проверяем шах королю противника (основная проверка)
-        const inCheckPlayer = chess.in_check();
-        if (inCheckPlayer) {
-            // Если король под шахом, генерируем позицию повторно
+        // Получаем FEN и создаём новый объект Chess для надёжной проверки
+        const fen = chess.fen();
+        const testChess = new Chess(fen);
+        
+        // Находим позиции королей
+        let blackKingSquare = null;
+        let whiteKingSquare = null;
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                const square = String.fromCharCode(97 + j) + (8 - i);
+                const piece = testChess.get(square);
+                if (piece && piece.type === 'k') {
+                    if (piece.color === 'b') blackKingSquare = square;
+                    if (piece.color === 'w') whiteKingSquare = square;
+                }
+            }
+        }
+        
+        // Проверяем шах через анализ возможных ходов (более надёжный способ, чем in_check())
+        // Проверяем, может ли белая фигура атаковать чёрного короля
+        testChess.turn('w');
+        let blackInCheck = false;
+        if (blackKingSquare) {
+            const whiteMoves = testChess.moves({ verbose: true });
+            blackInCheck = whiteMoves.some(move => move.to === blackKingSquare);
+        }
+        
+        // Проверяем, может ли чёрная фигура атаковать белого короля
+        testChess.turn('b');
+        let whiteInCheck = false;
+        if (whiteKingSquare) {
+            const blackMoves = testChess.moves({ verbose: true });
+            whiteInCheck = blackMoves.some(move => move.to === whiteKingSquare);
+        }
+        
+        // Если любой король под шахом, регенерируем позицию
+        if (blackInCheck || whiteInCheck) {
+            if (window.DEBUG_CHESS_GENERATOR) {
+                console.log('Regenerating position: king in check', {
+                    blackInCheck: blackInCheck,
+                    whiteInCheck: whiteInCheck,
+                    blackKingSquare: blackKingSquare,
+                    whiteKingSquare: whiteKingSquare
+                });
+            }
             return generate();
         }
-        const originalTurn = chess.turn(); // Чей ход?
-        chess.turn(originalTurn === 'w' ? 'b' : 'w'); // Передаём ход противнику
-        const inCheckOther = chess.in_check();
-        if (inCheckOther) {
-            // Если другой король под шахом, тоже генерируем позицию повторно
-            chess.turn(originalTurn); // Возвращаем ход обратно перед возвратом
-            return generate();
-        }
-        chess.turn(originalTurn); // Возвращаем ход обратно (игроку)
+        
+        // Возвращаем ход белым (для начала игры)
+        chess.turn('w');
         
         return chess.fen();
     }
