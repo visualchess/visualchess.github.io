@@ -56,10 +56,12 @@ function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts 
         let firstBishopColor = null;
 
         // Размещаем белого короля
-        chess.put({ type: 'k', color: 'w' }, uniquesquare(busysquare));
+        let whiteKingSquare = uniquesquare(busysquare);
+        chess.put({ type: 'k', color: 'w' }, whiteKingSquare);
 
         // Размещаем чёрного короля
-        chess.put({ type: 'k', color: 'b' }, uniquesquare(busysquare));
+        let blackKingSquare = uniquesquare(busysquare);
+        chess.put({ type: 'k', color: 'b' }, blackKingSquare);
 
         // Переменные для отслеживания цвета первого слона каждого цвета (для правильного размещения)
         let whiteFirstBishopColor = null;
@@ -113,20 +115,6 @@ function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts 
         // Получаем FEN и создаём новый объект Chess для надёжной проверки
         const fen = chess.fen();
         const testChess = new Chess(fen);
-        
-        // Находим позиции королей
-        let blackKingSquare = null;
-        let whiteKingSquare = null;
-        for (let i = 0; i < 8; i++) {
-            for (let j = 0; j < 8; j++) {
-                const square = String.fromCharCode(97 + j) + (8 - i);
-                const piece = testChess.get(square);
-                if (piece && piece.type === 'k') {
-                    if (piece.color === 'b') blackKingSquare = square;
-                    if (piece.color === 'w') whiteKingSquare = square;
-                }
-            }
-        }
         
         // Проверяем шах через анализ возможных ходов (более надёжный способ, чем in_check())
         // Проверяем, может ли белая фигура атаковать чёрного короля
