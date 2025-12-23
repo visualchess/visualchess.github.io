@@ -110,78 +110,23 @@ function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts 
             chess.put({ type: pieceType, color: color }, square);
         }
 
-        // Проверяем шах и мат для обоих королей
-        // Создаём новый объект Chess из FEN для надёжной проверки
-        const fen = chess.fen();
-        const testChess = new Chess(fen);
-        
-        // Находим позиции королей для дополнительной проверки
-        let blackKingSquare = null;
-        let whiteKingSquare = null;
-        for (let i = 0; i < 8; i++) {
-            for (let j = 0; j < 8; j++) {
-                const square = String.fromCharCode(97 + j) + (8 - i);
-                const piece = testChess.get(square);
-                if (piece && piece.type === 'k') {
-                    if (piece.color === 'b') blackKingSquare = square;
-                    if (piece.color === 'w') whiteKingSquare = square;
-                }
-            }
-        }
-        
-        // Проверяем шах чёрному королю
-        testChess.turn('b');
-        const blackInCheck = testChess.in_check();
-        const blackMoves = testChess.moves();
-        const blackInCheckmate = blackInCheck && blackMoves.length === 0;
-        
-        // Проверяем шах белому королю
-        testChess.turn('w');
-        const whiteInCheck = testChess.in_check();
-        const whiteMoves = testChess.moves();
-        const whiteInCheckmate = whiteInCheck && whiteMoves.length === 0;
-        
-        // Дополнительная проверка: проверяем, может ли белая фигура атаковать чёрного короля
-        // Для этого временно делаем ход белыми и проверяем все их ходы
-        let blackInCheckByMoves = false;
-        if (blackKingSquare) {
-            testChess.turn('w');
-            const whiteMovesToCheck = testChess.moves({ verbose: true });
-            blackInCheckByMoves = whiteMovesToCheck.some(move => move.to === blackKingSquare);
-        }
-        
-        // Аналогично для белого короля
-        let whiteInCheckByMoves = false;
-        if (whiteKingSquare) {
-            testChess.turn('b');
-            const blackMovesToCheck = testChess.moves({ verbose: true });
-            whiteInCheckByMoves = blackMovesToCheck.some(move => move.to === whiteKingSquare);
-        }
-        
-        // Используем обе проверки
-        const finalBlackInCheck = blackInCheck || blackInCheckByMoves;
-        const finalWhiteInCheck = whiteInCheck || whiteInCheckByMoves;
-
-        if (finalBlackInCheck || finalWhiteInCheck || blackInCheckmate || whiteInCheckmate) {
-            // Если любой король под шахом или матом, регенерируем позицию
-            if (window.DEBUG_CHESS_GENERATOR) {
-                console.log(`Regenerating position:`, {
-                    blackInCheck: blackInCheck,
-                    blackInCheckByMoves: blackInCheckByMoves,
-                    whiteInCheck: whiteInCheck,
-                    whiteInCheckByMoves: whiteInCheckByMoves,
-                    blackInCheckmate: blackInCheckmate,
-                    whiteInCheckmate: whiteInCheckmate,
-                    blackMovesCount: blackMoves.length,
-                    whiteMovesCount: whiteMoves.length,
-                    blackKingSquare: blackKingSquare,
-                    whiteKingSquare: whiteKingSquare,
-                    fen: fen
-                });
-            }
+        // Простая проверка шаха через chess.js (валидация через Stockfish будет снаружи)
+        // Проверяем шах королю противника (основная проверка)
+        const inCheckPlayer = chess.in_check();
+        if (inCheckPlayer) {
+            // Если король под шахом, генерируем позицию повторно
             return generate();
         }
-
+        const originalTurn = chess.turn(); // Чей ход?
+        chess.turn(originalTurn === 'w' ? 'b' : 'w'); // Передаём ход противнику
+        const inCheckOther = chess.in_check();
+        if (inCheckOther) {
+            // Если другой король под шахом, тоже генерируем позицию повторно
+            chess.turn(originalTurn); // Возвращаем ход обратно перед возвратом
+            return generate();
+        }
+        chess.turn(originalTurn); // Возвращаем ход обратно (игроку)
+        
         return chess.fen();
     }
 

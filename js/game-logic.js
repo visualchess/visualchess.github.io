@@ -45,6 +45,7 @@ async function generatePosition() {
         // Включаем режим отладки (можно включить в консоли: window.DEBUG_CHESS_GENERATOR = true)
         const debugMode = window.DEBUG_CHESS_GENERATOR || false;
         
+        // Генерируем позицию (валидация через chess.js уже внутри генератора)
         const fen = generateCheckmatePosition(type);
         chess = new Chess(fen);
         
@@ -64,7 +65,9 @@ async function generatePosition() {
                 fen: fen,
                 blackInCheck: blackCheck,
                 whiteInCheck: whiteCheck,
-                turn: chess.turn()
+                turn: chess.turn(),
+                mateIn: mateIn,
+                attempts: attempts
             });
         }
         
@@ -87,7 +90,7 @@ async function generatePosition() {
             <small>FEN: ${fen}</small>
         `;
         
-        // Запрашиваем у Stockfish количество ходов до мата
+        // Запрашиваем у Stockfish количество ходов до мата (не для валидации, а для отображения)
         if (stockfish) {
             const mateIn = await getMateInMoves(fen, 20);
             if (mateIn !== null) {
