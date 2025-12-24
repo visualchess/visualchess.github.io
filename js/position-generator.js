@@ -119,28 +119,21 @@ function generateEndgamePosition(pieces, bishopPairType = 'random', maxAttempts 
         // Проверяем шах через анализ возможных ходов (более надёжный способ, чем in_check())
         // Проверяем, может ли белая фигура атаковать чёрного короля
         testChess.turn('w');
-        let blackInCheck = false;
-        if (blackKingSquare) {
-            const whiteMoves = testChess.moves({ verbose: true });
-            blackInCheck = whiteMoves.some(move => move.to === blackKingSquare);
-        }
+        const blackInCheck = testChess.moves({ verbose: true }).some(move => move.to === blackKingSquare);
         
         // Проверяем, может ли чёрная фигура атаковать белого короля
         testChess.turn('b');
-        let whiteInCheck = false;
-        if (whiteKingSquare) {
-            const blackMoves = testChess.moves({ verbose: true });
-            whiteInCheck = blackMoves.some(move => move.to === whiteKingSquare);
-        }
+        const whiteInCheck = testChess.moves({ verbose: true }).some(move => move.to === whiteKingSquare);
         
         // Если любой король под шахом, регенерируем позицию
         if (blackInCheck || whiteInCheck) {
-            if (window.DEBUG_CHESS_GENERATOR) {
+            if (globalThis.DEBUG_CHESS_GENERATOR) {
                 console.log('Regenerating position: king in check', {
                     blackInCheck: blackInCheck,
                     whiteInCheck: whiteInCheck,
                     blackKingSquare: blackKingSquare,
-                    whiteKingSquare: whiteKingSquare
+                    whiteKingSquare: whiteKingSquare,
+                    fen: testChess.fen()
                 });
             }
             return generate();
