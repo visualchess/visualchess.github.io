@@ -2,6 +2,12 @@
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация флага протоколирования Stockfish (по умолчанию включен)
+    // Для отключения установите: globalThis.DEBUG_STOCKFISH_PROTOCOL = false
+    if (globalThis.DEBUG_STOCKFISH_PROTOCOL === undefined) {
+        globalThis.DEBUG_STOCKFISH_PROTOCOL = true;
+    }
+    
     initBoard();
     initStockfish();
     displayVersion();
