@@ -1,11 +1,58 @@
 // Работа со Stockfish
 
+// Переменная для хранения времени начала протоколирования
+let protocolStartTime = null;
+
+// Функция для сброса таймера протокола (вызывается при активации)
+function resetProtocolTimer() {
+    protocolStartTime = null;
+}
+
+// Функция для логирования протокола
+function logProtocol(direction, message) {
+    if (!globalThis.DEBUG_STOCKFISH_PROTOCOL) return;
+    
+    const protocolTextarea = document.getElementById('stockfishProtocol');
+    if (!protocolTextarea) return;
+    
+    // Инициализируем время начала при первом сообщении
+    if (protocolStartTime === null) {
+        protocolStartTime = performance.now();
+    }
+    
+    // Относительное время от начала протоколирования
+    const elapsed = (performance.now() - protocolStartTime).toFixed(2);
+    
+    // Абсолютное текущее время с миллисекундами
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+    const currentTime = `${hours}:${minutes}:${seconds}.${milliseconds}`;
+    
+    const prefix = direction === '>' ? '> ' : '< ';
+    const timestamp = `[${currentTime} | +${elapsed}ms]`;
+    const logLine = `${timestamp} ${prefix}${message}\n`;
+    
+    protocolTextarea.value += logLine;
+    // Автоматически прокручиваем вниз
+    protocolTextarea.scrollTop = protocolTextarea.scrollHeight;
+}
+
 // Инициализация Stockfish
 function initStockfish() {
     if (typeof Worker !== 'undefined') {
         stockfish = new Worker('stockfish/stockfish.js');
         stockfish.onmessage = handleStockfishMessage;
         console.log('Stockfish initialized');
+        
+        // Инициализируем протокол при активации
+        if (globalThis.DEBUG_STOCKFISH_PROTOCOL) {
+            protocolStartTime = null; // Сброс таймера при новой инициализации
+            // Отправляем команду uci для инициализации протокола
+            sendStockfishCommand('uci');
+        }
     } else {
         console.error('Web Workers not supported');
     }
@@ -14,6 +61,9 @@ function initStockfish() {
 // Обработка сообщений от Stockfish
 function handleStockfishMessage(e) {
     const message = e.data;
+    
+    // Логируем все сообщения от Stockfish
+    logProtocol('<', message);
     
     if (message.includes('bestmove')) {
         const parts = message.split(' ');
@@ -40,6 +90,8 @@ function handleStockfishMessage(e) {
 // Отправка команды Stockfish
 function sendStockfishCommand(command) {
     if (stockfish) {
+        // Логируем команду перед отправкой
+        logProtocol('>', command);
         stockfish.postMessage(command);
     }
 }
@@ -59,6 +111,9 @@ async function getBestMove(fen, depth = 15) {
         const originalHandler = stockfish.onmessage;
         stockfish.onmessage = (e) => {
             const message = e.data;
+            // Логируем все сообщения от Stockfish
+            logProtocol('<', message);
+            
             if (message.includes('bestmove')) {
                 clearTimeout(timeout);
                 stockfish.onmessage = originalHandler;
@@ -93,6 +148,9 @@ async function getMateInMoves(fen, depth = 20) {
         const originalHandler = stockfish.onmessage;
         stockfish.onmessage = (e) => {
             const message = e.data;
+            
+            // Логируем все сообщения от Stockfish
+            logProtocol('<', message);
             
             // Ищем информацию о мате
             const mateMatch = message.match(/score mate (-?\d+)/);

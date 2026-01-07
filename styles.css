@@ -109,3 +109,28 @@ h1 {
     color: #c62828;
 }
 
+#protocolContainer {
+    margin-top: 15px;
+}
+
+#protocolContainer label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+#stockfishProtocol {
+    width: 100%;
+    height: 300px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    resize: vertical;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
