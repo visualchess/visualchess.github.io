@@ -61,11 +61,11 @@ function onDrop(source, target) {
         isUserTurn = false;
         
         // Проверяем количество ходов до мата после хода пользователя
-        checkMateInMoves(true).then(() => {
+        checkMateInMoves(true).then(async () => {
             // После проверки запрашиваем ход Stockfish
             const fen = chess.fen();
-            sendStockfishCommand(`position fen ${fen}`);
-            sendStockfishCommand(`go depth 15`);
+            await sendStockfishCommand(`position fen ${fen}`);
+            await sendStockfishCommand(`go depth 15`);
         });
     }
     

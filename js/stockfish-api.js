@@ -3,6 +3,11 @@
 // Переменная для хранения времени начала протоколирования
 let protocolStartTime = null;
 
+// Флаг готовности Stockfish (после получения uciok)
+let isStockfishReady = false;
+let stockfishReadyPromise = null;
+let stockfishReadyResolve = null;
+
 // Функция для сброса таймера протокола (вызывается при активации)
 function resetProtocolTimer() {
     protocolStartTime = null;
@@ -47,12 +52,19 @@ function initStockfish() {
         stockfish.onmessage = handleStockfishMessage;
         console.log('Stockfish initialized');
         
+        // Сбрасываем флаг готовности
+        isStockfishReady = false;
+        stockfishReadyPromise = new Promise((resolve) => {
+            stockfishReadyResolve = resolve;
+        });
+        
         // Инициализируем протокол при активации
         if (globalThis.DEBUG_STOCKFISH_PROTOCOL) {
             protocolStartTime = null; // Сброс таймера при новой инициализации
-            // Отправляем команду uci для инициализации протокола
-            sendStockfishCommand('uci');
         }
+        
+        // Всегда отправляем команду uci для правильной инициализации UCI протокола
+        sendStockfishCommand('uci');
     } else {
         console.error('Web Workers not supported');
     }
@@ -65,7 +77,15 @@ function handleStockfishMessage(e) {
     // Логируем все сообщения от Stockfish
     logProtocol('<', message);
     
-    if (message.includes('bestmove')) {
+    // Проверяем получение uciok - сигнал готовности Stockfish
+    if (message.trim() === 'uciok') {
+        isStockfishReady = true;
+        if (stockfishReadyResolve) {
+            stockfishReadyResolve();
+            stockfishReadyResolve = null;
+        }
+        console.log('Stockfish ready (uciok received)');
+    } else if (message.includes('bestmove')) {
         const parts = message.split(' ');
         if (parts.length > 1 && parts[1] !== 'none') {
             const bestMove = parts[1];
@@ -88,20 +108,38 @@ function handleStockfishMessage(e) {
 }
 
 // Отправка команды Stockfish
-function sendStockfishCommand(command) {
-    if (stockfish) {
-        // Логируем команду перед отправкой
+// Если Stockfish ещё не готов (не получен uciok), команда будет отправлена после готовности
+async function sendStockfishCommand(command, waitForReady = true) {
+    if (!stockfish) return;
+    
+    // Команда uci не требует ожидания готовности
+    if (command === 'uci') {
         logProtocol('>', command);
         stockfish.postMessage(command);
+        return;
     }
+    
+    // Для остальных команд ждём готовности Stockfish
+    if (waitForReady && !isStockfishReady && stockfishReadyPromise) {
+        await stockfishReadyPromise;
+    }
+    
+    // Логируем команду перед отправкой
+    logProtocol('>', command);
+    stockfish.postMessage(command);
 }
 
 // Запрос лучшего хода от Stockfish
 async function getBestMove(fen, depth = 15) {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
         if (!stockfish) {
             resolve(null);
             return;
+        }
+        
+        // Ждём готовности Stockfish перед отправкой команд
+        if (!isStockfishReady && stockfishReadyPromise) {
+            await stockfishReadyPromise;
         }
         
         const timeout = setTimeout(() => {
@@ -126,17 +164,22 @@ async function getBestMove(fen, depth = 15) {
             }
         };
         
-        sendStockfishCommand(`position fen ${fen}`);
-        sendStockfishCommand(`go depth ${depth}`);
+        await sendStockfishCommand(`position fen ${fen}`);
+        await sendStockfishCommand(`go depth ${depth}`);
     });
 }
 
 // Запрос количества ходов до мата
 async function getMateInMoves(fen, depth = 20) {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
         if (!stockfish) {
             resolve(null);
             return;
+        }
+        
+        // Ждём готовности Stockfish перед отправкой команд
+        if (!isStockfishReady && stockfishReadyPromise) {
+            await stockfishReadyPromise;
         }
         
         const timeout = setTimeout(() => {
@@ -169,8 +212,8 @@ async function getMateInMoves(fen, depth = 20) {
             }
         };
         
-        sendStockfishCommand(`position fen ${fen}`);
-        sendStockfishCommand(`go depth ${depth}`);
+        await sendStockfishCommand(`position fen ${fen}`);
+        await sendStockfishCommand(`go depth ${depth}`);
     });
 }
 
